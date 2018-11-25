@@ -1,4 +1,3 @@
-import sys
 import uasyncio.core as asyncio
 
 from homie import __version__
