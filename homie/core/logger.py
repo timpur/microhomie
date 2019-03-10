@@ -1,3 +1,5 @@
+# Use https://github.com/micropython/micropython-lib/tree/master/logging ??
+
 from micropython import const
 
 ENABLE_COLOR = True

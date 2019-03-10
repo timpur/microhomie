@@ -14,6 +14,8 @@ IGNORE_STORE_PATHS = [
     "network.connected",
     "mqtt.connected",
     "convention",
+    "fw",
+    "implementation"
 ]
 
 
@@ -32,14 +34,14 @@ def dict_merge(source, destination, ignore_paths=[], path=None):
 
 
 class ConfigurationModule(HomieModule):
-    def start(self):
-        LOG.debug("Start")
-        self.load(FILE_NAME, self.homie.store.state, IGNORE_STORE_PATHS)
+    def init(self):
+        LOG.debug("Init")
+        self.load(FILE_NAME, self._homie.store.state, IGNORE_STORE_PATHS)
         LOG.success("Loaded Config")
 
     def stop(self, reason):
         LOG.debug("Stop:", reason)
-        self.save(FILE_NAME, self.homie.store.state, IGNORE_STORE_PATHS)
+        self.save(FILE_NAME, self._homie.store.state, IGNORE_STORE_PATHS)
         LOG.success("Saved Config")
 
     def load(self, file_name, destination, ignore_paths):
@@ -64,5 +66,10 @@ class ConfigurationModule(HomieModule):
         except ValueError:
             pass
 
+    @property
+    def current_config(self):
+        return dict_merge(self._homie.store.state, {}, IGNORE_STORE_PATHS)
+
     def validate(self, config):
+        # TODO: finish this
         None

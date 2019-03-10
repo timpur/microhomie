@@ -7,18 +7,17 @@ class HomieModule:
     def status(self):
         return self._status
 
-    @property
-    def homie(self):
-        return self._homie
+    def init(self):
+        pass
 
     def start(self):
-        raise NotImplementedError()
+        pass
 
     def stop(self, _):
-        raise NotImplementedError()
+        pass
 
 
-def import_module(homie, module_name, status="started"):
+def import_module(homie, module_name, status="started"):  # TODO: Move this to homie core ?
     module = homie.get_module(module_name)
     if not module:
         raise Exception("{} is not registered with homie.".format(module_name))

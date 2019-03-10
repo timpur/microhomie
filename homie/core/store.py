@@ -1,10 +1,15 @@
+from ucollections import deque
+import uasyncio.core as asyncio
+
+
 DEFAULT_STATE = {
     "core": {
-        "id": 'homie-default-id',
+        "id": "homie-default-id",
         "name": None,
         "mode": None,
         "state": None
     },
+    "nodes": {},
     "network": {
         "mode": "wifi",
         "connected": False,
@@ -22,8 +27,8 @@ DEFAULT_STATE = {
         "qos": 1,
         "base": "homie"
     },
-    'convention': {
-        'ready': False,
+    "convention": {
+        "ready": False,
         "stats": {
             "interval": 60,
             "uptime": 0,
@@ -31,8 +36,18 @@ DEFAULT_STATE = {
             "freeheap": 0
         },
         "broadcast": {}
-    }
+    },
+    "fw": {
+        "name": None,
+        "version": None
+    },
+    "implementation": {}
 }
+
+
+def join_paths(*args):
+    paths = args[0] if len(args) == 1 and isinstance(args[0], list) else args
+    return ".".join(filter(lambda item: False if item is None else True, paths))
 
 
 class Subscribable:
@@ -55,14 +70,16 @@ class Store(Subscribable):
     def __init__(self, initialState={}):
         super().__init__()
         self._state = initialState
+        self._changeQueue = deque((), 20, 1)
 
     @property
     def state(self):
         return self._state
 
-    def get(self, path, default_value=None):
+    def get(self, paths, default_value=None):
+        path = join_paths(paths)
         current_key_val = self._state
-        keys = path.split('.')
+        keys = path.split(".")
         for key in keys:
             key_val = current_key_val.get(key)
             if key_val is None:
@@ -70,9 +87,10 @@ class Store(Subscribable):
             current_key_val = key_val
         return current_key_val
 
-    def set(self, path, value, meta=None):
+    def set(self, paths, value, meta=None, ignoreEmptyValue=False, default=False):
+        path = join_paths(paths)
         current_key_val = self._state
-        keys = path.split('.')
+        keys = path.split(".")
         for key in keys[:-1]:
             key_val = current_key_val.get(key)
             if key_val is None:
@@ -82,9 +100,26 @@ class Store(Subscribable):
             current_key_val = key_val
         key = keys[-1]
         key_value = current_key_val.get(key)
+        if (ignoreEmptyValue or default) and value is None:
+            return
+        if default and key_value is not None:
+            return
         if key_value != value:
             if value is None:
                 del current_key_val[key]
             else:
                 current_key_val[key] = value
-            self.invoke(path, value, key_value, meta)
+            self._changeQueue.append((path, value, key_value, meta))
+
+    def process(self):
+        try:
+            while True:
+                (path, value, key_value, meta) = self._changeQueue.popleft()
+                self.invoke(path, value, key_value, meta)
+        except IndexError:
+            pass
+
+    async def process_task(self):
+        while True:
+            self.process()
+            await asyncio.sleep_ms(10)

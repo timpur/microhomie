@@ -11,38 +11,31 @@ def _import(module):
     return __import__(module, globals(), locals(), [], 0)
 
 
-async def manage_no_network(homie):
-    LOG.debug("No network to manage")
-    # await asyncio.sleep_ms(0)
-    homie.store.set("network.connected", True)
-
-
 class NetworkModule(HomieModule):
-    def __init__(self, homie):
-        super().__init__(homie)
+    def init(self):
+        LOG.debug("Init")
         self._module = None
         self._tasks = []
 
     def start(self):
         LOG.debug("Start")
-        self.homie.store.set("network.connected", False)
+        self._homie.store.set("network.connected", False)
 
-        mode = self.homie.store.get("network.mode")
+        mode = self._homie.store.get("network.mode")
         if mode == "wifi":
             self._module = _import('homie.modules.network.wifi')
-
-        if self._module:
-            self._tasks.append(self.homie.add_task(self._module.manager_task))
+        elif mode == 'none':
+            self._module = _import('homie.modules.network.none')
         else:
-            self._tasks.append(self.homie.add_task(manage_no_network))
+            raise Exception("Unknown network mode")
+
+        self._tasks.append(self._homie.add_task(self._module.manager_task))
 
     def stop(self, reason):
         LOG.debug("Stop:", reason)
         for task in self._tasks:
-            self.homie.stop_task(task)
-        self.homie.store.set("network.connected", False)
+            self._homie.stop_task(task)
+        self._homie.store.set("network.connected", False)
 
-    def get_ifconfig(self, param):
-        if self._module:
-            return self._module.get_ifconfig(param)
-        return None
+    def get_if_config(self):
+        return self._module.get_if_config()

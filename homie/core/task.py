@@ -23,12 +23,6 @@ class WaitForMS:
         self._event_loop = asyncio.get_event_loop()
 
     async def __aenter__(self):
-        return self.do_enter()
-
-    async def __aexit__(self, *args):
-        self.do_exit()
-
-    def do_enter(self):
         if self._timeout is None:
             return self
 
@@ -40,7 +34,7 @@ class WaitForMS:
         self._event_loop.call_later_ms(self._timeout, self._cancel_coro)
         return self
 
-    def do_exit(self):
+    async def __aexit__(self, *args):
         self._coro = None
         self._cancel_coro = None
 
@@ -61,7 +55,7 @@ class WaitForStateToBe:
         if not only_change:
             self._check(path, store.get(path))
 
-    def _check(self, key, new_value, *args):
+    def _check(self, key, new_value, *_):
         if not key == self._path:
             return
         if new_value == self._value:
